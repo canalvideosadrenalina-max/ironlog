@@ -5,22 +5,26 @@ import {
   createRegistrationToken,
   createSessionToken,
 } from "@/lib/auth-tokens";
-import { createAdminClient } from "@/lib/supabase-admin";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as { email?: string; code?: string };
     const email = (body.email ?? "").trim().toLowerCase();
-    const token = (body.code ?? "").replace(/\D/g, "");
+    const code = (body.code ?? "").replace(/\D/g, "");
 
-    if (!email || token.length !== 6) {
+    if (!email || code.length !== 6) {
       return NextResponse.json({ error: "Código inválido" }, { status: 400 });
     }
 
-    const supabase = createAdminClient();
     const { data, error } = await supabase.auth.verifyOtp({
       email,
-      token,
+      token: code,
       type: "email",
     });
 

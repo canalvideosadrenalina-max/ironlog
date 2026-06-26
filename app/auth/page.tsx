@@ -60,14 +60,19 @@ export default function AuthPage() {
         body: JSON.stringify({ email }),
       });
 
-      const data = (await res.json()) as { error?: string; email?: string };
+      const data = (await res.json()) as { error?: string; success?: boolean };
 
       if (!res.ok) {
         setError(data.error ?? "Erro ao enviar código");
         return;
       }
 
-      setMaskedEmail(data.email ?? email);
+      const [local, domain] = email.split("@");
+      const masked =
+        local && domain
+          ? `${local.length <= 2 ? `${local[0]}*` : `${local.slice(0, 2)}***`}@${domain}`
+          : email;
+      setMaskedEmail(masked);
       setOtp(["", "", "", "", "", ""]);
       setStep("otp");
       setTimeout(() => otpRefs.current[0]?.focus(), 300);
