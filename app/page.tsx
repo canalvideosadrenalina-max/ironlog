@@ -153,7 +153,18 @@ export default function Home() {
         {isMuted ? "🔇" : "🔊"}
       </button>
 
-      <footer className="fixed bottom-4 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap text-xs tracking-widest text-iron-primary opacity-70">
+      <footer
+        className="fixed bottom-4 left-0 z-20 tracking-widest text-iron-primary opacity-70"
+        style={{
+          fontSize: "10px",
+          textAlign: "center",
+          width: "100%",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          padding: "0 16px",
+        }}
+      >
         Criado por Romualdo Barcelos | CYNIX Technology | Brasil
       </footer>
 
@@ -195,6 +206,20 @@ export default function Home() {
           className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-transparent via-transparent to-black/60"
           aria-hidden="true"
         />
+
+        {/* Logo IRONLOG de fundo */}
+        <div
+          className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center"
+          aria-hidden="true"
+        >
+          <p
+            className="select-none text-center font-black uppercase leading-none tracking-tighter text-white/10"
+            style={{ fontSize: "15vw" }}
+          >
+            IRON
+            <span className="text-iron-primary/10">LOG</span>
+          </p>
+        </div>
 
         {/* Header — logo marca */}
         <h1 className="logo-impact logo-glow fixed left-1/2 top-6 z-10 -translate-x-1/2 font-black uppercase leading-none tracking-tighter">
