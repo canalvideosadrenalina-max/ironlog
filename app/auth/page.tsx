@@ -10,16 +10,15 @@ import {
   useRef,
   useState,
 } from "react";
-import { formatBrazilianPhone, normalizePhone } from "@/lib/phone";
 import { TRAINING_TIPS } from "@/lib/training-tips";
 
-type Step = "phone" | "otp" | "register";
+type Step = "email" | "otp" | "register";
 
 export default function AuthPage() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("phone");
-  const [phone, setPhone] = useState("");
-  const [maskedPhone, setMaskedPhone] = useState("");
+  const [step, setStep] = useState<Step>("email");
+  const [email, setEmail] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [registrationToken, setRegistrationToken] = useState("");
   const [name, setName] = useState("");
@@ -32,7 +31,7 @@ export default function AuthPage() {
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (step !== "phone") return;
+    if (step !== "email") return;
 
     const interval = setInterval(() => {
       setTipVisible(false);
@@ -45,8 +44,8 @@ export default function AuthPage() {
     return () => clearInterval(interval);
   }, [step]);
 
-  const handlePhoneChange = (value: string) => {
-    setPhone(formatBrazilianPhone(value));
+  const handleEmailChange = (value: string) => {
+    setEmail(value.trim().toLowerCase());
     setError("");
   };
 
@@ -58,17 +57,17 @@ export default function AuthPage() {
       const res = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: normalizePhone(phone) }),
+        body: JSON.stringify({ email }),
       });
 
-      const data = (await res.json()) as { error?: string; phone?: string };
+      const data = (await res.json()) as { error?: string; email?: string };
 
       if (!res.ok) {
         setError(data.error ?? "Erro ao enviar código");
         return;
       }
 
-      setMaskedPhone(data.phone ?? phone);
+      setMaskedEmail(data.email ?? email);
       setOtp(["", "", "", "", "", ""]);
       setStep("otp");
       setTimeout(() => otpRefs.current[0]?.focus(), 300);
@@ -128,7 +127,7 @@ export default function AuthPage() {
       const res = await fetch("/api/auth/verify-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: normalizePhone(phone), code }),
+        body: JSON.stringify({ email, code }),
       });
 
       const data = (await res.json()) as {
@@ -191,7 +190,7 @@ export default function AuthPage() {
   const goBack = useCallback(() => {
     setError("");
     if (step === "otp") {
-      setStep("phone");
+      setStep("email");
       return;
     }
     if (step === "register") {
@@ -222,7 +221,7 @@ export default function AuthPage() {
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
           {/* Header */}
           <div className="relative mb-10 flex items-center justify-center">
-            {step !== "phone" && (
+            {step !== "email" && (
               <button
                 type="button"
                 onClick={goBack}
@@ -239,23 +238,23 @@ export default function AuthPage() {
             </Link>
           </div>
 
-          {/* Passo 1 — Telefone */}
-          {step === "phone" && (
+          {/* Passo 1 — Email */}
+          {step === "email" && (
             <form onSubmit={handleSendOtp} className="step-enter flex flex-1 flex-col">
               <h1 className="text-center text-xl font-black uppercase tracking-wide text-white">
-                Seu número de telefone
+                SEU EMAIL
               </h1>
               <p className="mt-3 text-center text-base font-semibold text-iron-primary">
-                Você receberá um código pelo WhatsApp
+                Você receberá um código pelo email
               </p>
 
               <input
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel"
-                placeholder="(99) 99999-9999"
-                value={phone}
-                onChange={(e) => handlePhoneChange(e.target.value)}
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => handleEmailChange(e.target.value)}
                 className="mt-10 w-full border-2 border-iron-primary bg-transparent px-4 py-4 text-lg font-semibold text-white outline-none placeholder:text-[#666666] transition-colors focus:border-iron-primary"
               />
 
@@ -296,7 +295,7 @@ export default function AuthPage() {
                 Confirme seu código
               </h1>
               <p className="mt-3 text-center text-sm text-iron-secondary">
-                Código enviado para o WhatsApp {maskedPhone || phone}
+                Código enviado para {maskedEmail || email}
               </p>
 
               <div className="mt-10 flex justify-center gap-2 sm:gap-3">

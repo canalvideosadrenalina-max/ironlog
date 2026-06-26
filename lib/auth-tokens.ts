@@ -58,21 +58,22 @@ export function generateOtpCode(): string {
   return String(randomInt(100000, 999999));
 }
 
-export function createSessionToken(userId: string, phone: string): string {
+export function createSessionToken(userId: string, email: string): string {
   const payloadPart = encodePayload({
     type: "session",
     userId,
-    phone,
+    email,
     exp: Date.now() + SESSION_MAX_AGE_MS,
   });
   const signature = sign(`session:${payloadPart}`);
   return `${payloadPart}.${signature}`;
 }
 
-export function createRegistrationToken(phone: string): string {
+export function createRegistrationToken(email: string, userId: string): string {
   const payloadPart = encodePayload({
     type: "registration",
-    phone,
+    email,
+    userId,
     exp: Date.now() + REGISTRATION_MAX_AGE_MS,
   });
   const signature = sign(`registration:${payloadPart}`);
@@ -84,14 +85,17 @@ export function verifySessionToken(token: string) {
   if (!payload) return null;
   return {
     userId: String(payload.userId),
-    phone: String(payload.phone),
+    email: String(payload.email),
   };
 }
 
 export function verifyRegistrationToken(token: string) {
   const payload = verifySignedToken(token, "registration");
   if (!payload) return null;
-  return { phone: String(payload.phone) };
+  return {
+    email: String(payload.email),
+    userId: String(payload.userId),
+  };
 }
 
 export const SESSION_COOKIE = "ironlog_session";

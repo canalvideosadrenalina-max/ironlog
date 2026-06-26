@@ -5,51 +5,38 @@ import {
   createRegistrationToken,
   createSessionToken,
 } from "@/lib/auth-tokens";
-import { normalizePhone } from "@/lib/phone";
 import { createAdminClient } from "@/lib/supabase-admin";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { phone?: string; code?: string };
-    const phone = normalizePhone(body.phone ?? "");
-    const code = (body.code ?? "").replace(/\D/g, "");
+    const body = (await request.json()) as { email?: string; code?: string };
+    const email = (body.email ?? "").trim().toLowerCase();
+    const token = (body.code ?? "").replace(/\D/g, "");
 
-    if (!phone || code.length !== 6) {
+    if (!email || token.length !== 6) {
       return NextResponse.json({ error: "Código inválido" }, { status: 400 });
     }
 
     const supabase = createAdminClient();
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "email",
+    });
 
-    const { data: otpRow, error: otpError } = await supabase
-      .from("ironlog_otp_codes")
-      .select("id, code, expires_at, verified")
-      .eq("phone", phone)
-      .eq("verified", false)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (otpError || !otpRow) {
-      return NextResponse.json({ error: "Código não encontrado" }, { status: 404 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 401 });
     }
 
-    if (new Date(otpRow.expires_at).getTime() < Date.now()) {
-      return NextResponse.json({ error: "Código expirado. Reenvie." }, { status: 410 });
+    const authUserId = data.user?.id;
+    if (!authUserId) {
+      return NextResponse.json({ error: "Falha na autenticação" }, { status: 500 });
     }
-
-    if (otpRow.code !== code) {
-      return NextResponse.json({ error: "Código incorreto" }, { status: 401 });
-    }
-
-    await supabase
-      .from("ironlog_otp_codes")
-      .update({ verified: true })
-      .eq("id", otpRow.id);
 
     const { data: user, error: userError } = await supabase
       .from("ironlog_users")
-      .select("id, phone, name")
-      .eq("phone", phone)
+      .select("id, email, name")
+      .eq("id", authUserId)
       .maybeSingle();
 
     if (userError) {
@@ -57,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     if (user) {
-      const sessionToken = createSessionToken(user.id, user.phone);
+      const sessionToken = createSessionToken(user.id, user.email ?? email);
       const response = NextResponse.json({
         ok: true,
         exists: true,
@@ -75,7 +62,7 @@ export async function POST(request: Request) {
       return response;
     }
 
-    const registrationToken = createRegistrationToken(phone);
+    const registrationToken = createRegistrationToken(email, authUserId);
 
     return NextResponse.json({
       ok: true,

@@ -1,50 +1,36 @@
 import { NextResponse } from "next/server";
-import { generateOtpCode } from "@/lib/auth-tokens";
-import { buildOtpMessage, sendWhatsAppMessage } from "@/lib/evolution";
-import { isValidBrazilianPhone, maskPhone, normalizePhone } from "@/lib/phone";
 import { createAdminClient } from "@/lib/supabase-admin";
+
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return email;
+  const masked = local.length <= 2 ? `${local[0]}*` : `${local.slice(0, 2)}***`;
+  return `${masked}@${domain}`;
+}
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { phone?: string };
-    const phone = normalizePhone(body.phone ?? "");
+    const body = (await request.json()) as { email?: string };
+    const email = (body.email ?? "").trim().toLowerCase();
 
-    if (!isValidBrazilianPhone(phone)) {
-      return NextResponse.json(
-        { error: "Informe um celular válido: (99) 99999-9999" },
-        { status: 400 }
-      );
+    if (!isValidEmail(email)) {
+      return NextResponse.json({ error: "Informe um email válido" }, { status: 400 });
     }
 
-    const code = generateOtpCode();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     const supabase = createAdminClient();
+    const { error } = await supabase.auth.signInWithOtp({ email });
 
-    await supabase.from("ironlog_otp_codes").delete().eq("phone", phone);
-
-    const { error: insertError } = await supabase.from("ironlog_otp_codes").insert({
-      phone,
-      code,
-      expires_at: expiresAt,
-      verified: false,
-    });
-
-    if (insertError) {
-      return NextResponse.json({ error: insertError.message }, { status: 500 });
-    }
-
-    const whatsapp = await sendWhatsAppMessage(phone, buildOtpMessage(code));
-
-    if (!whatsapp.ok) {
-      return NextResponse.json(
-        { error: whatsapp.error ?? "Falha ao enviar WhatsApp" },
-        { status: 502 }
-      );
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({
       ok: true,
-      phone: maskPhone(phone),
+      email: maskEmail(email),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Erro interno";

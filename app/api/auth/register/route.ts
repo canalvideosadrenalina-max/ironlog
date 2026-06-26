@@ -39,12 +39,12 @@ export async function POST(request: Request) {
 
     const { data: existing } = await supabase
       .from("ironlog_users")
-      .select("id, phone, name")
-      .eq("phone", registration.phone)
+      .select("id, email, name")
+      .eq("id", registration.userId)
       .maybeSingle();
 
     if (existing) {
-      const sessionToken = createSessionToken(existing.id, existing.phone);
+      const sessionToken = createSessionToken(existing.id, existing.email ?? registration.email);
       const response = NextResponse.json({
         ok: true,
         user: { id: existing.id, name: existing.name },
@@ -64,12 +64,13 @@ export async function POST(request: Request) {
     const { data: user, error: insertError } = await supabase
       .from("ironlog_users")
       .insert({
-        phone: registration.phone,
+        id: registration.userId,
+        email: registration.email,
         name,
         academia_nome: body.academia_nome?.trim() || null,
         academia_cidade: body.academia_cidade?.trim() || null,
       })
-      .select("id, phone, name")
+      .select("id, email, name")
       .single();
 
     if (insertError || !user) {
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const sessionToken = createSessionToken(user.id, user.phone);
+    const sessionToken = createSessionToken(user.id, user.email ?? registration.email);
     const response = NextResponse.json({
       ok: true,
       user: { id: user.id, name: user.name },
